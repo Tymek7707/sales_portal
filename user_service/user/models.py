@@ -64,6 +64,6 @@ class CompanyProfile(BaseProfile):
         related_name='company_profile',
         )
 
-    company_name = models.CharField(max_length=100)        
+    company_name = models.CharField(max_length=100, null=True)        
 
-    nip = models.CharField(max_length=10, validators=[validate_nip])
+    nip = models.CharField(max_length=10, validators=[validate_nip], null=True)
