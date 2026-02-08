@@ -1,8 +1,10 @@
 from django.shortcuts import render
 
-from rest_framework import status
+from rest_framework import status , generics
+from rest_framework.exceptions import NotFound , PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated , IsAdminUser
 
 from rest_framework_simplejwt.tokens import RefreshToken , AccessToken
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -26,7 +28,7 @@ class LoginUserView(TokenObtainPairView):
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data('user')
+        user = serializer.validated_data['user']
 
         refresh_token = RefreshToken.for_user(user)
         access_token = str(refresh_token.access_token)
@@ -40,5 +42,73 @@ class LoginUserView(TokenObtainPairView):
             },
             'refresh': str(refresh_token),
             'access': access_token,
-        }
-        )
+        }, status=status.HTTP_200_OK)
+    
+class UserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        serializer = UserSerializer(user)
+        return Response(serializer.data)
+    
+
+
+class UserListView(generics.ListAPIView):
+   #permission_classes = [IsAdminUser]
+    queryset = MyUser.objects.all()
+    serializer_class = UserSerializer
+
+
+
+
+
+class MyProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_profile_and_serializer(self, user):
+        
+        if user.account_type == 'individual':
+            try:
+                profile = getattr(user, 'user_profile', None)
+            except UserProfile.DoesNotExist:
+                raise NotFound('Profile doesnt exist')
+            return profile , UserProfileSerializer
+        elif user.account_type == 'company':
+            try:
+                profile = getattr(user, 'company_profile', None)
+            except CompanyProfile.DoesNotExist:
+                    raise NotFound('Profile doesnt exist')
+            return profile , CompanyProfileSerializer
+
+    def get(self, request):
+
+        user = request.user
+
+        if user.is_staff or user.is_superuser:
+            return Response(
+            {
+                "role": "admin",
+                "email": user.email
+            })
+        
+        profile , SerializerClass = self.get_profile_and_serializer(user)
+        serializer = SerializerClass(profile)
+        
+        return Response(serializer.data)
+    
+    def patch(self, request):
+
+        user = request.user
+
+        if user.is_staff or user.is_superuser:
+            raise PermissionDenied('Admin do not have editable profiles')
+        
+        profile , SerializerClass = self.get_profile_and_serializer(user)
+
+        serializer = SerializerClass(profile, data = request.data, partial = True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(request.data)

@@ -65,3 +65,29 @@ class LoginUserSerializer(serializers.Serializer):
         
         attrs['user'] = user
         return attrs
+    
+
+
+class UserSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = MyUser
+        fields = ['email', 'account_type','phone_number', 'date_joined', 'id']
+        read_only_fields = ['account_type' , 'date_joined', 'id']
+
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserProfile
+        fields = '__all__'
+        read_only_fields = ['user' , 'id']
+
+
+
+class CompanyProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CompanyProfile
+        fields = '__all__'
+        read_only_fields = ['user' , 'id']
+                
