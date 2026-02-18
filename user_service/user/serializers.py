@@ -68,6 +68,61 @@ class LoginUserSerializer(serializers.Serializer):
     
 
 
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+    confirm_new_password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        user = self.context['request'].user
+        old_password = attrs.get('old_password')
+        new_password = attrs.get('new_password')
+        confirm_new_password = attrs.get('confirm_new_password')
+
+        if not user.check_password(old_password):
+            raise serializers.ValidationError({'old_password' : 'old password is incorrect'})
+        
+        if new_password != confirm_new_password:
+            raise serializers.ValidationError({'confirm_new_password' : 'New passwords must be the same'})
+        
+        if old_password == new_password:
+            raise serializers.ValidationError({'new_password' : 'New password must be different than old password'})
+        
+        try:
+            validate_password(new_password)
+        except serializers.ValidationError as e:
+            raise serializers.ValidationError({'new_password': list(e.messages)})
+        
+        attrs['user'] = user
+        return attrs
+    
+    def save(self, **kwargs):
+        user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        
+        return user
+
+
+
+class SoftDeleteAccountSerializer(serializers.Serializer):
+    reason = serializers.CharField(
+        max_length=250,
+        required = False,
+        allow_blank = True,
+        help_text = "Optional , why are you deleting account?"
+        )
+    confirm = serializers.BooleanField(
+        required = True,
+        help_text = 'are you sure to delete your account?'
+        )
+
+    def validate_confirm(self, val):
+        if not val:
+            raise serializers.ValidationError('You must confirm account deletion')
+        return val
+
+
 class UserSerializer(serializers.ModelSerializer):
     
     class Meta:

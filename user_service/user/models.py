@@ -27,6 +27,9 @@ class MyUser(AbstractBaseUser, PermissionsMixin):
     
     date_joined = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
+    deleted_at = models.DateTimeField(auto_now_add=False, null= True ,blank=True)
+
+    deletion_reason = models.TextField(max_length=250, null=True, blank=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []

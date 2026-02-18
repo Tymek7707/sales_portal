@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from django.utils import timezone
 
 from rest_framework import status , generics
 from rest_framework.exceptions import NotFound , PermissionDenied
@@ -6,8 +7,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated , IsAdminUser
 
-from rest_framework_simplejwt.tokens import RefreshToken , AccessToken
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.exceptions import TokenError
 
 from .serializers import *
 # Create your views here.
@@ -44,6 +46,52 @@ class LoginUserView(TokenObtainPairView):
             'access': access_token,
         }, status=status.HTTP_200_OK)
     
+
+
+class LogoutUserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self,request):
+
+        try:
+            refresh_token = request.data['refresh']
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return Response({'message': 'User logged out successfully'})
+        except KeyError:
+            return Response({'message': 'Refresh token is required'})
+        except TokenError:
+            return Response({'message': 'Invalid or expired token'})
+        
+class ChangeUserPasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        serializer = ChangePasswordSerializer
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'message' : 'Password changed correctly'}, status=status.HTTP_200_OK)
+        return Response(
+            serializer.errors, 
+            status=status.HTTP_400_BAD_REQUEST)
+
+
+class SoftDeleteAccountView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self,request):
+        serializer = SoftDeleteAccountSerializer
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+
+        user.is_active = False
+        user.deleted_at = timezone.now()
+        user.deletion_reason = serializer.validated_data.get('reason')
+        user.save()
+
+
+
 class UserView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -56,7 +104,7 @@ class UserView(APIView):
 
 
 class UserListView(generics.ListAPIView):
-   #permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminUser]
     queryset = MyUser.objects.all()
     serializer_class = UserSerializer
 
@@ -111,4 +159,4 @@ class MyProfileView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        return Response(request.data)
+        return Response(serializer.data)
