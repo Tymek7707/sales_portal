@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser , PermissionsMixin
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 from .managers import UserManager
 from .validators import *
@@ -42,6 +43,8 @@ class BaseProfile(models.Model):
     
     bio = models.TextField(blank=True)
 
+    rating = models.FloatField(default=0.0)
+
     class Meta:
         abstract = True
 
@@ -73,3 +76,19 @@ class CompanyProfile(BaseProfile):
     company_name = models.CharField(max_length=100, null=True)        
 
     nip = models.CharField(max_length=10, validators=[validate_nip], null=True)
+
+
+
+class Review(models.Model):
+    reviewer = models.ForeignKey(MyUser, on_delete=models.SET_NULL , null=True, related_name='gived review')
+    reviewed = models.ForeignKey(MyUser, on_delete=models.CASCADE, related_name='recived review')
+    listing = models.ForeignKey()
+    rating = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)]
+    )
+
+    comment = models.TextField(max_length=250, null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        unique_together = ['reviewer', 'reviewed' ,'listing']

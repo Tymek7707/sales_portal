@@ -43,7 +43,7 @@ class RegisterUserSerializer(serializers.ModelSerializer):
         if user.account_type == 'individual':
             UserProfile.objects.create(user=user)
         elif user.account_type == 'company':
-            UserProfile.objects.create(user=user)
+            CompanyProfile.objects.create(user=user)
 
         return user        
     
@@ -130,6 +130,45 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['email', 'account_type','phone_number', 'date_joined', 'id']
         read_only_fields = ['account_type' , 'date_joined', 'id']
 
+
+
+class CreateReviewSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = Review
+        fields = ['reviewed' , 'listing', 'rating' , 'comment']
+
+    def create(self, validated_data):
+
+        user = self.context['request'].user
+
+        review = Review.objects.create(reviewer = user, **validated_data)
+
+        return review
+    
+    def validate(self, attrs):
+        
+        reviewer = self.context['request'].user
+        reviewed = attrs['reviewed']
+
+        if reviewer == reviewed:
+            raise serializers.ValidationError('You cant review yourself')
+        
+        return attrs
+        
+
+class ReviewDetailSerializer(serializers.ModelSerializer):
+    reviewer = UserSerializer(read_only=True)
+    reviewed = UserSerializer(read_only=True)
+    #listing = ListingSerializer(read_only=True)
+    
+    class Meta:
+        model = Review
+        fields = '__all__'
+class ReviewListSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        fields = ['reviewer' , 'reviewed' ,'listing', 'created_at']
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
