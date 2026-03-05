@@ -67,7 +67,7 @@ class ChangeUserPasswordView(APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
-        serializer = ChangePasswordSerializer()
+        serializer = ChangePasswordSerializer(data = request.data , context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response({'message' : 'Password changed correctly'}, status=status.HTTP_200_OK)
@@ -80,31 +80,18 @@ class SoftDeleteAccountView(APIView):
     permission_classes = [IsAuthenticated]
 
     def delete(self,request):
-        serializer = SoftDeleteAccountSerializer
-        serializer.is_valid(raise_exception=True)
+        serializer = SoftDeleteAccountSerializer(data = request.data)
+        
+        if serializer.is_valid(raise_exception=True):
 
-        user = request.user
+            user = request.user
 
-        user.is_active = False
-        user.deleted_at = timezone.now()
-        user.deletion_reason = serializer.validated_data.get('reason')
-        user.save()
+            user.is_active = False
+            user.deleted_at = timezone.now()
+            user.deletion_reason = serializer.validated_data.get('reason')
+            user.save()
 
-class CreateReviewView(APIView):
-    permission_classes = [IsAuthenticated]
 
-    def post(self,request):
-        serializer = CreateReviewSerializer(data = request.data, context = {'request': request})
-        if serializer.is_valid():
-            review = serializer.save()
-            res = ReviewDetailSerializer(review)
-            return Response(res.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-class DetailReviewView(APIView):
-    
-    def get(self, request):
-        serializer = ReviewDetailSerializer
 
 
 class UserView(APIView):
